@@ -1,13 +1,45 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 
-type FormStatus = "idle" | "loading" | "success" | "duplicate" | "error";
+function formatErrorMessage(error: unknown): string {
+  if (error === null || error === undefined) {
+    return "Unknown error";
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const parts = [record.error, record.message, record.details, record.hint]
+      .filter((part): part is string => typeof part === "string" && part.length > 0);
+
+    if (parts.length > 0) {
+      const code =
+        typeof record.code === "string" ? ` (${record.code})` : "";
+      return `${parts.join(" — ")}${code}`;
+    }
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 
 export function EarlyAccessForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<FormStatus>("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle",
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -15,24 +47,29 @@ export function EarlyAccessForm() {
     if (!trimmed) return;
 
     setStatus("loading");
+    setErrorMessage(null);
 
     try {
-      const supabase = createBrowserClient();
-      const { error } = await supabase
-        .from("early_access_signups")
-        .insert({ email: trimmed });
+      const response = await fetch("/api/early-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
 
-      if (error) {
-        if (error.code === "23505") {
-          setStatus("duplicate");
-          return;
-        }
-        throw error;
+      const data: unknown = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        console.log("Early access signup error:", { status: response.status, data });
+        setErrorMessage(formatErrorMessage(data));
+        setStatus("error");
+        return;
       }
 
       setEmail("");
       setStatus("success");
-    } catch {
+    } catch (error) {
+      console.log("Early access signup error:", error);
+      setErrorMessage(formatErrorMessage(error));
       setStatus("error");
     }
   }
@@ -61,6 +98,7 @@ export function EarlyAccessForm() {
             setEmail(event.target.value);
             if (status !== "idle" && status !== "loading") {
               setStatus("idle");
+              setErrorMessage(null);
             }
           }}
           disabled={status === "loading"}
@@ -77,17 +115,12 @@ export function EarlyAccessForm() {
 
       {status === "success" && (
         <p className="mt-4 text-sm text-emerald-400/90" role="status">
-          You&apos;re on the list. We&apos;ll be in touch soon.
+          You&apos;re on the list!
         </p>
       )}
-      {status === "duplicate" && (
-        <p className="mt-4 text-sm text-zinc-500" role="status">
-          That email is already signed up.
-        </p>
-      )}
-      {status === "error" && (
-        <p className="mt-4 text-sm text-red-400/90" role="status">
-          Something went wrong. Please try again.
+      {status === "error" && errorMessage && (
+        <p className="mt-4 text-sm text-red-400/90" role="alert">
+          {errorMessage}
         </p>
       )}
     </section>
