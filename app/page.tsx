@@ -49,14 +49,10 @@ export default function Home() {
           ))}
         </ul>
 
-        <div className="mt-16">
-          <p className="mb-4 text-xs font-medium tracking-wider text-zinc-500 uppercase">
-            Install in one line
-          </p>
-          <pre className="overflow-x-auto rounded-xl border border-white/[0.08] bg-zinc-900/60 px-5 py-4 font-mono text-sm text-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_0_32px_rgba(99,102,241,0.12),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
-            <code>{`<script src="https://cdn.signal.dev/v1.js" async></script>`}</code>
-          </pre>
-        </div>
+        <p className="mt-16 text-center text-sm leading-relaxed text-zinc-500">
+          Early access partners receive a private installation guide and
+          onboarding support.
+        </p>
 
         <EarlyAccessForm />
       </main>
