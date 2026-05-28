@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #fafafa; color: #18181b; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 16px; }
+    h1 { font-size: 22px; font-weight: 600; }
+    p.sub { font-size: 14px; color: #71717a; text-align: center; max-width: 380px; line-height: 1.6; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
+    input, textarea { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none; font-family: inherit; }
+    textarea { resize: none; }
+    .btn { width: 100%; max-width: 380px; height: 42px; border-radius: 10px; border: none; background: #18181b; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .btn.ghost { background: #fff; border: 1px solid #e5e7eb; color: #18181b; }
+    .btn.reset { background: #fff; border: 1px solid #fecaca; color: #b91c1c; font-size: 13px; }
+    .hint { font-size: 12px; color: #a1a1aa; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Signal Test Page</h1>
+  <p class="sub">The snippet is live. Try triggers below or fill the form and click away.</p>
+  <div class="card">
+    <input type="email" placeholder="your@email.com" />
+    <textarea rows="3" placeholder="Tell us about your project..."></textarea>
+    <button class="btn" onclick="alert('Submitted!')">Submit</button>
+    <p class="hint">Type in a field then click away — triggers input_abandon after 8s</p>
+  </div>
+  <button class="btn ghost" onclick="Signal._triggerRageClick()">Simulate rage click</button>
+  <button class="btn ghost" onclick="Signal._triggerDeadClick()">Simulate dead click</button>
+  <button class="btn reset" onclick="Signal._reset();alert('Cooldown reset')">Reset cooldown (test again)</button>
+  <script src="/signal.js"></script>
+  <script>
+    Signal.init({ projectId: "test-project", endpoint: "/api/signal" });
+  </script>
+</body>
+</html>
