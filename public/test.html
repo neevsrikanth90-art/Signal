@@ -10,18 +10,45 @@
     h1 { font-size: 22px; font-weight: 600; }
     p.sub { font-size: 14px; color: #71717a; text-align: center; max-width: 380px; line-height: 1.6; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; width: 100%; max-width: 380px; }
-    .hint { font-size: 12px; color: #a1a1aa; text-align: center; margin-top: 8px; }
+    .hint { font-size: 12px; color: #a1a1aa; text-align: center; margin-top: 8px; line-height: 1.5; }
+    .warning { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 10px; padding: 14px 16px; width: 100%; max-width: 380px; font-size: 13px; color: #92400e; line-height: 1.5; text-align: center; }
+    .warning code { font-size: 12px; background: rgba(0,0,0,.06); padding: 2px 6px; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h1 id="rage-target">Signal Test Page</h1>
   <p class="sub">Wait 60s for idle, rage-click this heading 3× quickly, or use the ? button.</p>
-  <div class="card">
-    <p class="hint">Replace data-key with a real key from the projects table.</p>
+  <div id="key-warning" class="warning" hidden>
+    Missing <code>key</code> query parameter. Add your project API key to the URL, e.g.
+    <code>?key=sk_live_your_key</code>
   </div>
-  <script
-    src="/signal.js"
-    data-key="sk_test_replace_me"
-  ></script>
+  <div class="card">
+    <p class="hint" id="key-hint">Load with <code>?key=YOUR_API_KEY</code> from the projects table.</p>
+  </div>
+  <script>
+    (function () {
+      var key = new URLSearchParams(window.location.search).get("key");
+      var warning = document.getElementById("key-warning");
+      var hint = document.getElementById("key-hint");
+
+      if (!key || !key.trim()) {
+        warning.hidden = false;
+        if (hint) {
+          hint.textContent = "Signal widget not loaded — add ?key=YOUR_API_KEY to the URL.";
+        }
+        return;
+      }
+
+      key = key.trim();
+      if (hint) {
+        hint.textContent = "Widget loaded with API key from URL.";
+      }
+
+      var script = document.createElement("script");
+      script.src = "/signal.js";
+      script.setAttribute("data-key", key);
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>
