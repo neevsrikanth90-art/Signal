@@ -19,7 +19,8 @@
 
   var INGEST;
   try {
-    INGEST = new URL(script.src).origin + "/api/ingest";
+    // Always post to /api/ingest on the script host (never derive from "signal.js" filename).
+    INGEST = new URL("/api/ingest", script.src).href;
   } catch (e) {
     return;
   }

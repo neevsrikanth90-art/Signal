@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { checkSupabaseEnv, createAdminClient } from "@/lib/supabase/admin";
 
 const VALID_TRIGGERS = new Set(["idle", "rage_click", "manual"]);
 
@@ -112,13 +112,19 @@ export async function POST(req: NextRequest) {
     messageLength: message.length,
   });
 
+  const envCheck = checkSupabaseEnv();
+  if (!envCheck.ok) {
+    console.error("[ingest] supabase env check failed:", envCheck.error);
+    return json({ error: "Missing Supabase env vars" }, 500);
+  }
+
   let supabase;
 
   try {
     supabase = createAdminClient();
   } catch (clientError) {
     logError("[ingest] supabase client init failed", clientError);
-    return json({ error: "Server configuration error" }, 500);
+    return json({ error: "Missing Supabase env vars" }, 500);
   }
 
   let project: {

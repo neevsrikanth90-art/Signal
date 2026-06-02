@@ -2,47 +2,57 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
+export type SupabaseEnvCheck =
+  | { ok: true; url: string; serviceRoleKey: string }
+  | { ok: false; error: string };
+
+/** Normalize project URL (strip /rest/v1 and trailing slashes). */
+export function normalizeSupabaseUrl(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\/rest\/v1\/?$/i, "")
+    .replace(/\/+$/, "");
+}
+
+export function checkSupabaseEnv(): SupabaseEnvCheck {
+  const hasUrl = Boolean(process.env.SUPABASE_URL?.trim());
+  const hasKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+
+  console.info("[supabase/admin] env vars present", {
+    SUPABASE_URL: hasUrl,
+    SUPABASE_SERVICE_ROLE_KEY: hasKey,
+  });
+
+  const urlRaw = process.env.SUPABASE_URL?.trim() ?? "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+
+  if (!urlRaw || !serviceRoleKey) {
+    return { ok: false, error: "Missing Supabase env vars" };
+  }
+
+  let url: string;
+  try {
+    const parsed = new URL(normalizeSupabaseUrl(urlRaw));
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { ok: false, error: "Missing Supabase env vars" };
+    }
+    url = parsed.origin;
+  } catch {
+    return { ok: false, error: "Missing Supabase env vars" };
+  }
+
+  return { ok: true, url, serviceRoleKey };
+}
+
 export function createAdminClient(): SupabaseClient {
   if (client) return client;
 
-  const url =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url) {
-    throw new Error(
-      "Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) for server operations",
-    );
+  const env = checkSupabaseEnv();
+  if (!env.ok) {
+    throw new Error(env.error);
   }
 
-  if (!serviceRoleKey) {
-    throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY — anon key cannot be used here (RLS has no public policies)",
-    );
-  }
-
-  if (
-    process.env.SUPABASE_ANON_KEY &&
-    serviceRoleKey === process.env.SUPABASE_ANON_KEY
-  ) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY matches SUPABASE_ANON_KEY — use the service role secret from Supabase dashboard",
-    );
-  }
-
-  if (
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-    serviceRoleKey === process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY matches NEXT_PUBLIC_SUPABASE_ANON_KEY — use the service role secret, not the anon key",
-    );
-  }
-
-  console.info("[supabase/admin] client init", {
-    urlHost: url.replace(/^https?:\/\//, "").split("/")[0],
-    serviceRoleKeyPrefix: serviceRoleKey.slice(0, 8),
-  });
+  const { url, serviceRoleKey } = env;
 
   client = createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
