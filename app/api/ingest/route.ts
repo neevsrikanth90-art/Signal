@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Resend } from "resend";
 import { checkSupabaseEnv, createAdminClient } from "@/lib/supabase/admin";
 
 const VALID_TRIGGERS = new Set(["idle", "rage_click", "manual"]);
@@ -33,6 +34,65 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
+const TRIGGER_EMOJI: Record<string, string> = {
+  rage_click: "🔴",
+  idle: "🟡",
+  manual: "💬",
+};
+
+async function notifyEmail(
+  to: string,
+  payload: {
+    trigger: string;
+    pageUrl: string;
+    message: string;
+    timestamp: string;
+  },
+) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.warn("[ingest] RESEND_API_KEY not set — skipping email");
+    return;
+  }
+
+  const resend = new Resend(resendKey);
+  const emoji = TRIGGER_EMOJI[payload.trigger] ?? "📩";
+  const pageDisplay = payload.pageUrl || "(unknown page)";
+
+  await resend.emails.send({
+    from: "Signal <signal@pathfindersai.co>",
+    to,
+    subject: `Signal: user got stuck on ${pageDisplay}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;">
+  <h2 style="margin-top:0;">User got stuck on your site</h2>
+  <table style="border-collapse:collapse;width:100%;">
+    <tr>
+      <td style="padding:8px 0;color:#555;width:120px;">Trigger</td>
+      <td style="padding:8px 0;">${emoji} ${payload.trigger}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:#555;">Page</td>
+      <td style="padding:8px 0;word-break:break-all;">${pageDisplay}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:#555;vertical-align:top;">Message</td>
+      <td style="padding:8px 0;">${payload.message}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:#555;">Time</td>
+      <td style="padding:8px 0;">${payload.timestamp}</td>
+    </tr>
+  </table>
+  <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+  <p style="font-size:12px;color:#999;margin:0;">Sent by Signal — user feedback intelligence</p>
+</body>
+</html>`,
+  });
+}
+
 async function notifySlack(
   webhookUrl: string,
   payload: {
@@ -42,9 +102,10 @@ async function notifySlack(
     projectName: string | null;
   },
 ) {
+  const emoji = TRIGGER_EMOJI[payload.trigger] ?? "📩";
   const text = [
     "*New Signal feedback*",
-    `*Trigger:* ${payload.trigger}`,
+    `*Trigger:* ${emoji} ${payload.trigger}`,
     `*Page:* ${payload.pageUrl || "(unknown)"}`,
     payload.projectName ? `*Project:* ${payload.projectName}` : null,
     `*Message:*\n${payload.message}`,
@@ -65,7 +126,7 @@ async function notifySlack(
         {
           type: "section",
           fields: [
-            { type: "mrkdwn", text: `*Trigger:*\n${payload.trigger}` },
+            { type: "mrkdwn", text: `*Trigger:*\n${emoji} ${payload.trigger}` },
             {
               type: "mrkdwn",
               text: `*Page:*\n${payload.pageUrl || "—"}`,
@@ -131,12 +192,13 @@ export async function POST(req: NextRequest) {
     id: string;
     name: string | null;
     slack_webhook_url: string | null;
+    notification_email: string | null;
   } | null;
 
   try {
     const { data, error: projectError } = await supabase
       .from("projects")
-      .select("id, name, slack_webhook_url")
+      .select("id, name, slack_webhook_url, notification_email")
       .eq("api_key", apiKey)
       .maybeSingle();
 
@@ -184,6 +246,8 @@ export async function POST(req: NextRequest) {
       return json({ error: "Could not save feedback" }, 500);
     }
 
+    const timestamp = new Date().toISOString();
+
     if (project.slack_webhook_url) {
       try {
         await notifySlack(project.slack_webhook_url, {
@@ -194,6 +258,19 @@ export async function POST(req: NextRequest) {
         });
       } catch (slackError) {
         logError("[ingest] slack webhook failed", slackError);
+      }
+    }
+
+    if (project.notification_email) {
+      try {
+        await notifyEmail(project.notification_email, {
+          trigger,
+          pageUrl: pageUrl ?? "",
+          message,
+          timestamp,
+        });
+      } catch (emailError) {
+        logError("[ingest] email notification failed", emailError);
       }
     }
 
