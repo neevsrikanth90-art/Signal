@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EarlyAccessForm } from "@/components/early-access-form";
 
 const benefits = [
@@ -22,10 +23,31 @@ export default function Home() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.12),transparent)]"
         aria-hidden
       />
+
+      {/* Nav */}
+      <header className="relative border-b border-white/[0.04] px-6 py-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
+          <span className="text-sm font-medium tracking-widest text-zinc-500 uppercase">
+            Signal
+          </span>
+          <div className="flex items-center gap-5">
+            <Link
+              href="/login"
+              className="text-sm text-zinc-400 transition hover:text-zinc-200"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-zinc-950 shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition hover:bg-zinc-100 active:scale-[0.98]"
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </header>
+
       <main className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-20 sm:py-28">
-        <p className="mb-10 text-sm font-medium tracking-widest text-zinc-500 uppercase">
-          Signal
-        </p>
         <h1 className="max-w-xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.08]">
           <span className="bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
             Know where users get stuck in your app—and ask one question at
