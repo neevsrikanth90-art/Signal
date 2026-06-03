@@ -25,6 +25,7 @@ export default function LoginPage() {
       setError(authError.message);
       setLoading(false);
     } else {
+      await new Promise((resolve) => setTimeout(resolve, 500));
       window.location.href = "/dashboard";
     }
   }
