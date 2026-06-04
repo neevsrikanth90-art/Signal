@@ -16,15 +16,19 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createSupabaseBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    console.log("attempting sign in...");
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    console.log("sign in result:", { data, authError });
 
     if (authError) {
+      console.log("auth error:", authError.message);
       setError(authError.message);
       setLoading(false);
     } else {
+      console.log("success, redirecting...");
       await new Promise((resolve) => setTimeout(resolve, 500));
       window.location.href = "/dashboard";
     }
