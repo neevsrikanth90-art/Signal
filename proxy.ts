@@ -33,6 +33,18 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && pathname.startsWith("/dashboard")) {
+    // If a Supabase session cookie is already present, getUser() may have
+    // lost the race against a freshly-written cookie. Let the request through —
+    // the dashboard server components perform their own auth check and will
+    // redirect to /login if the token is actually invalid.
+    const hasSessionCookie = request.cookies
+      .getAll()
+      .some((c) => c.name.startsWith("sb-"));
+
+    if (hasSessionCookie) {
+      return supabaseResponse;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
